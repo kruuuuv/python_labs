@@ -1,3 +1,5 @@
-str name = str(input());
-int age = int(input());
-print("Привет, ", name, "! Через год тебе будет", age+1, ".");
+print("Имя:", end="");
+name = str(input());
+print("Возраст:", end="");
+age = int(input());
+print("Привет, ", name, "! Через год тебе будет ", age+1, ".",sep = '');
