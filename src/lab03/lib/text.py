@@ -51,18 +51,22 @@ def top_n(freq: dict[str, int], n: int = 5) -> list[tuple[str, int]]:
                 items[j], items[j + 1] = items[j + 1], items[j]
     return items[:n]
 
+if __name__ == "__main__":
+    print(normalize("ПрИвЕт\nМИр\t"))
+    print(normalize("ёжик, Ёлка"))
+    print(normalize("Hello\r\nWorld"))
+    print(normalize("  двойные   пробелы  "))
 
-print(normalize("ПрИвЕт\nМИр\t"))          # привет мир
-print(normalize("ёжик, Ёлка"))             # ежик, елка
-print(normalize("Hello\r\nWorld"))         # hello world
-print(normalize("  двойные   пробелы  "))  # двойные пробелы
+    print(tokenize("привет мир"))
+    print(tokenize("hello,world!!!"))
+    print(tokenize("по-настоящему круто"))
+    print(tokenize("2025 год"))
+    print(tokenize("emoji 😀 не слово"))
 
-print(tokenize("привет мир"))              # ['привет', 'мир']
-print(tokenize("hello,world!!!"))          # ['hello', 'world']
-print(tokenize("по-настоящему круто"))     # ['по-настоящему', 'круто']
-print(tokenize("2025 год"))                # ['2025', 'год']
-print(tokenize("emoji 😀 не слово"))       # ['emoji', 'не', 'слово']
+    freq = count_freq(["a", "b", "a", "c", "b", "a"])
+    print(freq)
+    print(top_n(freq, n=2))
 
-print(count_freq(["a","b","a","c","b","a"]))            # {'a': 3, 'b': 2, 'c': 1}
-print(top_n({"a":3,"b":2,"c":1}, n=2))                  # [('a', 3), ('b', 2)]
-print(top_n(count_freq(["bb","aa","bb","aa","cc"]), 2)) # [('aa', 2), ('bb', 2)]
+    freq2 = count_freq(["bb", "aa", "bb", "aa", "cc"])
+    print(freq2)
+    print(top_n(freq2, n=2))
