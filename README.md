@@ -650,7 +650,131 @@ if __name__ == "__main__":
 ![](images/lab05/lr_run.png) ![from_csv](images/lab05/from_csv.png) ![from_json](images/lab05/from_json.png) ![cities](images/lab05/cities.png) ![](images/lab05/empty.png)
 
 # Лабораторная работа 6
-## техническое задание
+## подкоманды в CLI
+```python
+import argparse
+
+import re
+import sys
+from collections import Counter
+from pathlib import Path
+
+
+def main():
+    parser = argparse.ArgumentParser(description="CLI‑утилиты лабораторной №6")
+    subparsers = parser.add_subparsers(dest="command")
+
+    # подкоманда cat
+    cat_parser = subparsers.add_parser("cat", help="Вывести содержимое файла")
+    cat_parser.add_argument("--input", required=True)
+    cat_parser.add_argument("-n", action="store_true", help="Нумеровать строки")
+
+    # подкоманда stats
+    stats_parser = subparsers.add_parser("stats", help="Частоты слов")
+    stats_parser.add_argument("--input", required=True)
+    stats_parser.add_argument("--top", type=int, default=5)
+
+    args = parser.parse_args()
+
+    if args.command == "cat":
+        try:
+            lines = Path(args.input).read_text(encoding="utf-8").splitlines()
+        except FileNotFoundError:
+            print(f"Ошибка: файл не найден: {args.input}", file=sys.stderr)
+            sys.exit(1)
+
+        for i, line in enumerate(lines, start=1):
+            if args.n:
+                print(f"{i:>6}\t{line}")
+            else:
+                print(line)
+
+    elif args.command == "stats":
+        try:
+            text = Path(args.input).read_text(encoding="utf-8")
+        except FileNotFoundError:
+            print(f"Ошибка: файл не найден: {args.input}", file=sys.stderr)
+            sys.exit(1)
+
+        words = re.findall(r"\w+", text.lower(), flags=re.UNICODE)
+        freq = Counter(words)
+
+        print(f"Всего слов: {len(words)}")
+        print(f"Уникальных: {len(freq)}")
+        print(f"Топ-{args.top}:")
+        for word, count in freq.most_common(args.top):
+            print(f"  {word}: {count}")
+
+    else:
+        parser.print_help()
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
+```
+## CLI‑конвертер
+```python
+import argparse
+
+import sys
+from pathlib import Path
+
+from src.lab05.json_csv import json_to_csv, csv_to_json
+from src.lab05.csv_xlsx import csv_to_xlsx
+
+
+def main():
+    parser = argparse.ArgumentParser(description="CLI‑конвертеры лабораторной №6")
+    subparsers = parser.add_subparsers(dest="command")
+
+    # подкоманда json2csv
+    p1 = subparsers.add_parser("json2csv", help="JSON → CSV")
+    p1.add_argument("--in", dest="input", required=True)
+    p1.add_argument("--out", dest="output", required=True)
+
+    # подкоманда csv2json
+    p2 = subparsers.add_parser("csv2json", help="CSV → JSON")
+    p2.add_argument("--in", dest="input", required=True)
+    p2.add_argument("--out", dest="output", required=True)
+
+    # подкоманда csv2xlsx
+    p3 = subparsers.add_parser("csv2xlsx", help="CSV → XLSX")
+    p3.add_argument("--in", dest="input", required=True)
+    p3.add_argument("--out", dest="output", required=True)
+
+    args = parser.parse_args()
+
+    if args.command == "json2csv":
+        json_to_csv(args.input, args.output)
+        print(f"[OK] {args.input} → {args.output}")
+
+    elif args.command == "csv2json":
+        csv_to_json(args.input, args.output)
+        print(f"[OK] {args.input} → {args.output}")
+
+    elif args.command == "csv2xlsx":
+        csv_to_xlsx(args.input, args.output)
+        print(f"[OK] {args.input} → {args.output}")
+
+    else:
+        parser.print_help()
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
+```
+подкоманда cat
+![](images/lab06/cat.png)
+подкоманда stats
+![](images/lab06/stats.png)
+преобразования
+![](images/lab06/json2csv.png) ![](images/lab06/csv2json.png) ![](images/lab06/csv2xlsx.png)
+вспомогательная
+![](images/lab06/help.png)
+при пустом файле
+![](images/lab06/nope.png)
 
 # Лабораторная работа 7
 ##
