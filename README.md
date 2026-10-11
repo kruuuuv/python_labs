@@ -1063,10 +1063,269 @@ def test_csv_to_json_no_header(tmp_path: Path):
 
 
 # Лабораторная работа 8
-##
+Цель: изучить основы объектно-ориентированного программирования в Python, научиться описывать модели данных с помощью @dataclass, реализовывать методы и валидацию, сериализовывать/десериализовывать объекты.
+Связь: продолжаем работу с файлами и сериализацией из ЛР5, логику структуры и оформления наследуем из предыдущих ЛР. Основная задача — реализовать полноценную модель студента, экспорт/импорт в JSON и корректные методы экземпляра
+## models.py
+```python
+from dataclasses import dataclass
+from datetime import date, datetime
+
+
+@dataclass
+class Student:
+    """Студент: ФИО, дата рождения, группа, средний балл."""
+
+    fio: str
+    birthdate: str  # формат YYYY-MM-DD
+    group: str
+    gpa: float
+
+    def __post_init__(self) -> None:
+        """Валидация: формат даты и диапазон gpa."""
+        # 1) формат даты
+        try:
+            datetime.strptime(self.birthdate, "%Y-%m-%d")
+        except ValueError as e:
+            raise ValueError(
+                f"birthdate должен быть в формате YYYY-MM-DD, получено: {self.birthdate!r}"
+            ) from e
+
+        # 2) диапазон gpa
+        if not (0 <= self.gpa <= 5):
+            raise ValueError(f"gpa должен быть в диапазоне 0..5, получено: {self.gpa}")
+
+    def age(self) -> int:
+        """Количество полных лет."""
+        b = datetime.strptime(self.birthdate, "%Y-%m-%d").date()
+        today = date.today()
+        years = today.year - b.year
+        # если день рождения в этом году ещё не наступил — минус год
+        if (today.month, today.day) < (b.month, b.day):
+            years -= 1
+        return years
+
+    def to_dict(self) -> dict:
+        """Сериализация в словарь."""
+        return {
+            "fio": self.fio,
+            "birthdate": self.birthdate,
+            "group": self.group,
+            "gpa": self.gpa,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "Student":
+        """Десериализация из словаря."""
+        return cls(
+            fio=d["fio"],
+            birthdate=d["birthdate"],
+            group=d["group"],
+            gpa=d["gpa"],
+        )
+
+    def __str__(self) -> str:
+        """Красивый вывод."""
+        return f"{self.fio} ({self.group}), {self.age()} лет, GPA={self.gpa}"
+```
+![models test](images/lab08/models_test.png)
+## serialize.py
+```python
+import json
+from pathlib import Path
+
+from src.lab08.models import Student
+
+
+def students_to_json(students: list[Student], path: str | Path) -> None:
+    """Сохранить список студентов в JSON."""
+    data = [s.to_dict() for s in students]
+
+    p = Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+
+    with p.open("w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+def students_from_json(path: str | Path) -> list[Student]:
+    """Прочитать JSON и вернуть список Student.
+
+    FileNotFoundError — если файла нет.
+    ValueError — если структура не список словарей.
+    """
+    p = Path(path)
+    if not p.exists():
+        raise FileNotFoundError(f"Файл не найден: {p}")
+
+    with p.open(encoding="utf-8") as f:
+        data = json.load(f)
+
+    if not isinstance(data, list):
+        raise ValueError("JSON должен быть массивом объектов")
+    if not all(isinstance(item, dict) for item in data):
+        raise ValueError("Каждый элемент JSON должен быть словарём")
+
+    return [Student.from_dict(item) for item in data]
+```
+### from JSON
+![](images/lab08/from_JSON.png)
+### to JSON
+![](images/lab08/serialize_to.png)
+## tests
+![пустой/отсутствующий файл](images/lab08/none_file.png)
+![неверный GPA](images/lab08/wrong_gpa.png)
+
 
 # Лабораторная работа 9
-##
+Цель: реализовать простейшее хранилище данных студентов на основе CSV-файла, отработать CRUD-операции (Create / Read / Update / Delete) и научиться работать с ними через отдельный класс Group. Связь: ЛР9 использует Student из ЛР8 и утилиты работы с CSV из ЛР4–ЛР5. Также создаёт основу для CLI-утилиты в ЛР10
+##group.py
+```python
+from __future__ import annotations
+
+import csv
+from pathlib import Path
+
+from src.lab08.models import Student
+
+
+class Group:
+    """Хранилище студентов в CSV-файле с CRUD-операциями."""
+
+    HEADER = ("fio", "birthdate", "group", "gpa")
+
+    def __init__(self, storage_path: str | Path) -> None:
+        self.path = Path(storage_path)
+        self._ensure_storage_exists()
+
+    # ---------- внутренние методы ----------
+
+    def _ensure_storage_exists(self) -> None:
+        """Создать файл с заголовком, если его ещё нет."""
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        if not self.path.exists():
+            with self.path.open("w", newline="", encoding="utf-8") as f:
+                w = csv.writer(f)
+                w.writerow(self.HEADER)
+
+    def _read_all(self) -> list[dict]:
+        """Прочитать все строки CSV. Проверить заголовок."""
+        with self.path.open(encoding="utf-8", newline="") as f:
+            reader = csv.DictReader(f)
+            if reader.fieldnames is None:
+                raise ValueError("CSV пуст — нет заголовка")
+            if tuple(reader.fieldnames) != self.HEADER:
+                raise ValueError(
+                    f"Неверный заголовок CSV. Ожидалось {self.HEADER}, "
+                    f"получено {tuple(reader.fieldnames)}"
+                )
+            return list(reader)
+
+    def _write_all(self, rows: list[dict]) -> None:
+        """Перезаписать CSV переданными строками."""
+        with self.path.open("w", newline="", encoding="utf-8") as f:
+            w = csv.DictWriter(f, fieldnames=self.HEADER)
+            w.writeheader()
+            for r in rows:
+                w.writerow({k: r[k] for k in self.HEADER})
+
+    # ---------- CRUD ----------
+
+    def list(self) -> list[Student]:
+        """Все студенты как список Student."""
+        rows = self._read_all()
+        return [Student.from_dict({**r, "gpa": float(r["gpa"])}) for r in rows]
+
+    def add(self, student: Student) -> None:
+        """Добавить студента в CSV."""
+        rows = self._read_all()
+        rows.append({
+            "fio": student.fio,
+            "birthdate": student.birthdate,
+            "group": student.group,
+            "gpa": str(student.gpa),
+        })
+        self._write_all(rows)
+
+    def find(self, substr: str) -> list[Student]:
+        """Найти студентов по подстроке в ФИО."""
+        rows = self._read_all()
+        return [
+            Student.from_dict({**r, "gpa": float(r["gpa"])})
+            for r in rows
+            if substr.lower() in r["fio"].lower()
+        ]
+
+    def remove(self, fio: str) -> int:
+        """Удалить всех с указанным ФИО. Вернуть количество удалённых."""
+        rows = self._read_all()
+        new_rows = [r for r in rows if r["fio"] != fio]
+        removed = len(rows) - len(new_rows)
+        if removed:
+            self._write_all(new_rows)
+        return removed
+
+    def update(self, fio: str, **fields) -> int:
+        """Обновить поля студента(ов) с указанным ФИО. Вернуть количество обновлённых."""
+        allowed = set(self.HEADER) - {"fio"}
+        unknown = set(fields) - allowed
+        if unknown:
+            raise ValueError(f"Недопустимые поля для обновления: {unknown}")
+
+        rows = self._read_all()
+        count = 0
+        for r in rows:
+            if r["fio"] == fio:
+                for k, v in fields.items():
+                    r[k] = str(v)
+                count += 1
+
+        if count:
+            # перепроверка: собрать Student'ов, чтобы валидация сработала
+            for r in rows:
+                Student.from_dict({**r, "gpa": float(r["gpa"])})
+            self._write_all(rows)
+        return count
+
+    # ---------- ★ аналитика ----------
+
+    def stats(self) -> dict:
+        """Статистика по группе."""
+        students = self.list()
+
+        if not students:
+            return {
+                "count": 0,
+                "min_gpa": None,
+                "max_gpa": None,
+                "avg_gpa": None,
+                "groups": {},
+                "top_5_students": [],
+            }
+
+        gpas = [s.gpa for s in students]
+
+        groups: dict[str, int] = {}
+        for s in students:
+            groups[s.group] = groups.get(s.group, 0) + 1
+
+        top5 = sorted(students, key=lambda s: -s.gpa)[:5]
+
+        return {
+            "count": len(students),
+            "min_gpa": min(gpas),
+            "max_gpa": max(gpas),
+            "avg_gpa": round(sum(gpas) / len(gpas), 2),
+            "groups": groups,
+            "top_5_students": [{"fio": s.fio, "gpa": s.gpa} for s in top5],
+        }
+```
+### вывод списка
+![](images/lab09/list.png)
+### добавление в список
+![](images/lab09/add.png)
+### удаление из списка
+![](images/lab09/delete.png)
+прочие действия в images/lab09
 
 # Лабораторная работа 10
 ##

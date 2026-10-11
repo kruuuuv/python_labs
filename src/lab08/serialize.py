@@ -1,5 +1,3 @@
-"""Сериализация списка студентов в JSON и обратно."""
-
 import json
 from pathlib import Path
 

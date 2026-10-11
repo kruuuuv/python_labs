@@ -1,5 +1,3 @@
-"""Модель Student: @dataclass с валидацией, методами и сериализацией."""
-
 from dataclasses import dataclass
 from datetime import date, datetime
 
