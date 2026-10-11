@@ -910,7 +910,6 @@ def test_top_n_tie_breaker():
 def test_top_n_empty():
     assert top_n({}, 5) == []
 ```
-![](images/lab07/text.png)
 ### на json_csv.py
 ```python
 """Тесты для src/lab05/json_csv.py."""
@@ -1058,7 +1057,9 @@ def test_csv_to_json_no_header(tmp_path: Path):
     with pytest.raises(ValueError):
         csv_to_json(str(src), str(dst))
 ```
-![](images/lab07/json.png)
+![pytest](images/lab07/pytest.png)
+### coverage test
+![](images/lab07/coverage.png)
 
 
 # Лабораторная работа 8
