@@ -1,9 +1,9 @@
-
 def min_max(nums: list[float | int]) -> tuple[float | int, float | int]:
     if not nums:
         raise ValueError("пустой список")
 
     return (min(nums), max(nums))
+
 
 def unique_sorted(nums: list[float | int]) -> list[float | int]:
     unums = []
@@ -12,6 +12,7 @@ def unique_sorted(nums: list[float | int]) -> list[float | int]:
             unums.append(num)
     unums.sort()
     return unums
+
 
 def flatten(mat: list[list | tuple]) -> list:
     truenums = []

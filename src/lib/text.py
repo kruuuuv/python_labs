@@ -1,7 +1,8 @@
 def normalize(s: str, *, casefold: bool = True, yo2e: bool = True) -> str:
     if casefold == True:
         s = s.casefold()
-    else: s = s.lower()
+    else:
+        s = s.lower()
     if yo2e == True:
         s = s.replace("ё", "е").replace("Ё", "Е")
 
@@ -51,7 +52,8 @@ def top_n(freq: dict[str, int], n: int = 5) -> list[tuple[str, int]]:
                 items[j], items[j + 1] = items[j + 1], items[j]
     return items[:n]
 
-if __name__ == "__main__":
+
+if __name__ == "__main__": # pragma: no cover
     print(normalize("ПрИвЕт\nМИр\t"))
     print(normalize("ёжик, Ёлка"))
     print(normalize("Hello\r\nWorld"))

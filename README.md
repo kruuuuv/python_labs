@@ -1,6 +1,6 @@
 # python_labs
 
-# Лабораторная работа №1
+# Лабораторная работа 1
 
 ## задание 1
 ```python
@@ -72,7 +72,7 @@ print(o,z)
 
 ![](./images/lab01/ex06.png)
 
-## задание 6
+## задание 7
 ```python
 sh = input()
 
@@ -765,19 +765,301 @@ def main():
 if __name__ == "__main__":
     main()
 ```
-подкоманда cat
+### подкоманда cat
 ![](images/lab06/cat.png)
-подкоманда stats
+### подкоманда stats
 ![](images/lab06/stats.png)
-преобразования
+### преобразования
 ![](images/lab06/json2csv.png) ![](images/lab06/csv2json.png) ![](images/lab06/csv2xlsx.png)
-вспомогательная
+### вспомогательная
 ![](images/lab06/help.png)
-при пустом файле
+### при пустом файле
 ![](images/lab06/nope.png)
 
 # Лабораторная работа 7
-##
+Цель: научиться писать модульные тесты на pytest, измерять покрытие и поддерживать единый стиль кода (black).
+Связь: тестируем функции из src/lib/text.py (ЛР3) и src/lab05/json_csv.py (ЛР5).
+## ТЕСТЫ
+### на text.py
+```python
+"""Тесты для src/lib/text.py."""
+
+import pytest
+
+from src.lib.text import normalize, tokenize, count_freq, top_n
+
+# ---------- normalize ----------
+
+
+@pytest.mark.parametrize(
+    "source, expected",
+    [
+        ("ПрИвЕт\nМИр\t", "привет мир"),
+        ("ёжик, Ёлка", "ежик, елка"),
+        ("Hello\r\nWorld", "hello world"),
+        ("  двойные   пробелы  ", "двойные пробелы"),
+        ("", ""),
+        ("!!!", "!!!"),
+    ],
+)
+def test_normalize_basic(source, expected):
+    assert normalize(source) == expected
+
+def test_normalize_casefold_false():
+    """Ветка casefold=False использует .lower() вместо .casefold()."""
+    # "ß".casefold() == "ss", "ß".lower() == "ß" — разница видна
+    assert normalize("Straße", casefold=False) == "straße"
+    assert normalize("Straße", casefold=True) == "strasse"
+
+def test_normalize_yo2e_false():
+    """Ветка yo2e=False не заменяет ё → е."""
+    assert normalize("ёжик", yo2e=False) == "ёжик"
+    assert normalize("ёжик", yo2e=True) == "ежик"
+
+
+def test_normalize_whitespace_chars():
+    """Все виды пробельных символов (\\t \\n \\r \\v \\f) заменяются на пробел."""
+    assert normalize("a\tb\nc\rd\ve\ff") == "a b c d e f"
+
+
+def test_normalize_multiple_spaces():
+    """Несколько подряд идущих пробелов сжимаются в один."""
+    assert normalize("a    b   c") == "a b c"
+
+
+def test_normalize_strip():
+    """Пробелы по краям убираются."""
+    assert normalize("   abc   ") == "abc"
+
+# ---------- tokenize ----------
+
+
+@pytest.mark.parametrize(
+    "source, expected",
+    [
+        ("привет мир", ["привет", "мир"]),
+        ("Привет, мир!", ["Привет", "мир"]),
+        ("test123 abc", ["test123", "abc"]),
+        ("", []),
+        ("!!! ... ???", []),
+        ("один два три", ["один", "два", "три"]),
+    ],
+)
+def test_tokenize_basic(source, expected):
+    assert tokenize(source) == expected
+
+def test_tokenize_hyphen_word():
+    """Слова с дефисом склеиваются: по-настоящему → одно слово."""
+    assert tokenize("по-настоящему круто") == ["по-настоящему", "круто"]
+
+
+def test_tokenize_trailing_hyphen():
+    """Слово, заканчивающееся на дефис, отбрасывается."""
+    assert tokenize("abc- def") == ["def"]
+
+
+def test_tokenize_digits():
+    """Цифры — часть слова: 2025 — токен."""
+    assert tokenize("2025 год") == ["2025", "год"]
+
+
+def test_tokenize_emoji():
+    """Эмодзи — не часть слова, отбрасываются."""
+    assert tokenize("emoji 😀 не слово") == ["emoji", "не", "слово"]
+
+
+def test_tokenize_underscore():
+    """Подчёркивание — часть слова: foo_bar — один токен."""
+    assert tokenize("foo_bar baz") == ["foo_bar", "baz"]
+
+# ---------- count_freq ----------
+
+
+def test_count_freq_basic():
+    tokens = ["a", "b", "a", "c", "a", "b"]
+    assert count_freq(tokens) == {"a": 3, "b": 2, "c": 1}
+
+
+def test_count_freq_empty():
+    assert count_freq([]) == {}
+
+
+def test_count_freq_all_same():
+    assert count_freq(["x"] * 5) == {"x": 5}
+
+
+# ---------- top_n ----------
+
+
+def test_top_n_basic():
+    freq = {"a": 3, "b": 2, "c": 1}
+    assert top_n(freq, 2) == [("a", 3), ("b", 2)]
+
+
+def test_top_n_more_than_items():
+    freq = {"a": 1}
+    assert top_n(freq, 10) == [("a", 1)]
+
+
+def test_top_n_tie_breaker():
+    """При равных частотах — сортировка по алфавиту."""
+    freq = {"banana": 2, "apple": 2, "cherry": 2}
+    assert top_n(freq, 3) == [("apple", 2), ("banana", 2), ("cherry", 2)]
+
+
+def test_top_n_empty():
+    assert top_n({}, 5) == []
+```
+![](images/lab07/text.png)
+### на json_csv.py
+```python
+"""Тесты для src/lab05/json_csv.py."""
+
+import csv
+import json
+from pathlib import Path
+
+import pytest
+
+from src.lab05.json_csv import json_to_csv, csv_to_json
+
+# ---------- позитивные сценарии ----------
+
+
+def test_json_to_csv_basic(tmp_path: Path):
+    src = tmp_path / "people.json"
+    dst = tmp_path / "people.csv"
+    data = [
+        {"name": "Alice", "age": 22},
+        {"name": "Bob", "age": 25},
+    ]
+    src.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    json_to_csv(str(src), str(dst))
+
+    with dst.open(encoding="utf-8", newline="") as f:
+        rows = list(csv.DictReader(f))
+
+    assert len(rows) == 2
+    assert {"name", "age"} <= set(rows[0].keys())
+    assert rows[0]["name"] == "Alice"
+    assert rows[1]["name"] == "Bob"
+
+
+def test_json_to_csv_missing_field(tmp_path: Path):
+    """Отсутствующие поля заполняются пустыми строками."""
+    src = tmp_path / "people.json"
+    dst = tmp_path / "people.csv"
+    data = [
+        {"name": "Alice", "age": 22, "city": "SPB"},
+        {"name": "Bob", "age": 25},
+    ]
+    src.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+
+    json_to_csv(str(src), str(dst))
+
+    with dst.open(encoding="utf-8", newline="") as f:
+        rows = list(csv.DictReader(f))
+
+    assert rows[1]["city"] == ""
+
+
+def test_csv_to_json_basic(tmp_path: Path):
+    src = tmp_path / "people.csv"
+    dst = tmp_path / "people.json"
+    src.write_text(
+        "name,age,city\nAlice,22,SPB\nBob,25,Moscow\n",
+        encoding="utf-8",
+    )
+
+    csv_to_json(str(src), str(dst))
+
+    data = json.loads(dst.read_text(encoding="utf-8"))
+    assert len(data) == 2
+    assert set(data[0].keys()) == {"name", "age", "city"}
+    assert data[0]["name"] == "Alice"
+    assert data[1]["age"] == "25"  # значения как строки
+
+
+def test_json_csv_roundtrip(tmp_path: Path):
+    """JSON → CSV → JSON: количество записей и набор ключей совпадают."""
+    original = [
+        {"name": "Alice", "age": "22", "city": "SPB"},
+        {"name": "Bob", "age": "25", "city": "Moscow"},
+    ]
+    j1 = tmp_path / "people.json"
+    c = tmp_path / "people.csv"
+    j2 = tmp_path / "people2.json"
+
+    j1.write_text(json.dumps(original, ensure_ascii=False), encoding="utf-8")
+
+    json_to_csv(str(j1), str(c))
+    csv_to_json(str(c), str(j2))
+
+    result = json.loads(j2.read_text(encoding="utf-8"))
+    assert len(result) == len(original)
+    assert set(result[0].keys()) == set(original[0].keys())
+
+
+# ---------- негативные сценарии ----------
+
+
+def test_json_to_csv_empty_json(tmp_path: Path):
+    src = tmp_path / "empty.json"
+    dst = tmp_path / "out.csv"
+    src.write_text("[]", encoding="utf-8")
+
+    with pytest.raises(ValueError):
+        json_to_csv(str(src), str(dst))
+
+
+def test_json_to_csv_not_a_list(tmp_path: Path):
+    src = tmp_path / "obj.json"
+    dst = tmp_path / "out.csv"
+    src.write_text('{"name": "Alice"}', encoding="utf-8")
+
+    with pytest.raises(ValueError):
+        json_to_csv(str(src), str(dst))
+
+
+def test_json_to_csv_list_not_of_dicts(tmp_path: Path):
+    src = tmp_path / "list.json"
+    dst = tmp_path / "out.csv"
+    src.write_text("[1, 2, 3]", encoding="utf-8")
+
+    with pytest.raises(ValueError):
+        json_to_csv(str(src), str(dst))
+
+
+def test_json_to_csv_file_not_found(tmp_path: Path):
+    with pytest.raises(FileNotFoundError):
+        json_to_csv(str(tmp_path / "nope.json"), str(tmp_path / "out.csv"))
+
+
+def test_csv_to_json_empty_csv(tmp_path: Path):
+    src = tmp_path / "empty.csv"
+    dst = tmp_path / "out.json"
+    src.write_text("name,age\n", encoding="utf-8")  # только заголовок
+
+    with pytest.raises(ValueError):
+        csv_to_json(str(src), str(dst))
+
+
+def test_csv_to_json_file_not_found(tmp_path: Path):
+    with pytest.raises(FileNotFoundError):
+        csv_to_json(str(tmp_path / "nope.csv"), str(tmp_path / "out.json"))
+
+def test_csv_to_json_no_header(tmp_path: Path):
+    """Совсем пустой CSV (0 байт) → ValueError."""
+    src = tmp_path / "empty.csv"
+    dst = tmp_path / "out.json"
+    src.write_text("", encoding="utf-8")
+
+    with pytest.raises(ValueError):
+        csv_to_json(str(src), str(dst))
+```
+![](images/lab07/json.png)
+
 
 # Лабораторная работа 8
 ##

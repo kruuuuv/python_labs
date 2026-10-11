@@ -3,7 +3,6 @@ import sys
 
 from lib.text import normalize, tokenize, count_freq, top_n
 
-
 TABLE_MODE = os.environ.get("TABLE_MODE", "0") == "1"
 
 

@@ -28,6 +28,6 @@ def format_record(rec: tuple[str, str, float]) -> str:
 task = input("Введите ФИО, группу и GPA через запятую: ")
 fio, group, gpa = task.split(",")
 gpa = float(gpa)
-fio = fio.replace('"', '')
-group = group.replace('"', '')
+fio = fio.replace('"', "")
+group = group.replace('"', "")
 print(format_record((fio, group, gpa)))

@@ -1,4 +1,3 @@
-
 import sys
 from pathlib import Path
 
@@ -28,8 +27,9 @@ def collect_frequencies(input_paths: list[str], encoding: str = "utf-8") -> Coun
     return total
 
 
-def create_report(input_paths: list[str], output_path: str,
-                  encoding: str = "utf-8") -> None:
+def create_report(
+    input_paths: list[str], output_path: str, encoding: str = "utf-8"
+) -> None:
     """Считать частоты из одного/нескольких файлов и записать CSV.
 
     В консоль печатает: число файлов, всего слов, уникальных, топ-5.
@@ -59,12 +59,15 @@ def main() -> None:
         description="Отчёт о частоте слов из текстовых файлов."
     )
     parser.add_argument(
-        "--in", dest="input_files", nargs="+",
-        default=["data/lab04/input.txt","data/lab04/a.txt","data/lab04/b.txt"],
-        help="Один или несколько входных .txt файлов."
+        "--in",
+        dest="input_files",
+        nargs="+",
+        default=["data/lab04/input.txt", "data/lab04/a.txt", "data/lab04/b.txt"],
+        help="Один или несколько входных .txt файлов.",
     )
     parser.add_argument(
-        "--out", dest="output_file",
+        "--out",
+        dest="output_file",
         default="data/lab04/report.csv",
         help="Путь к выходному CSV.",
     )
