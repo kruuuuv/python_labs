@@ -1,4 +1,1 @@
-Hello world
-Это тестовый текст
-test test hello world
-Python это просто
+Привет
