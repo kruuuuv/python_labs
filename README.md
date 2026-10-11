@@ -520,9 +520,134 @@ if __name__ == "__main__":
 # Лабораторная работа 5
 ## задание 1: json_csv.py
 ```python
+"""JSON ↔ CSV: двусторонняя конвертация списка словарей."""
 
+import csv
+import json
+from pathlib import Path
+
+
+def json_to_csv(json_path: str, csv_path: str) -> None:
+    """JSON-список словарей → CSV.
+
+    Отсутствующие поля заполняются пустыми строками.
+    Колонки — в порядке первого объекта.
+    """
+    p = Path(json_path)
+    if not p.exists():
+        raise FileNotFoundError(f"Файл не найден: {json_path}")
+
+    with p.open(encoding="utf-8") as f:
+        data = json.load(f)
+
+    if not isinstance(data, list) or not data:
+        raise ValueError("Пустой JSON или неподдерживаемая структура")
+    if not all(isinstance(item, dict) for item in data):
+        raise ValueError("JSON должен быть списком словарей")
+
+    fieldnames = list(data[0].keys())
+
+    out = Path(csv_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with out.open("w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=fieldnames)
+        w.writeheader()
+        for row in data:
+            w.writerow({k: row.get(k, "") for k in fieldnames})
+
+
+def csv_to_json(csv_path: str, json_path: str) -> None:
+    """CSV с заголовком → JSON-список словарей (значения — строки)."""
+    p = Path(csv_path)
+    if not p.exists():
+        raise FileNotFoundError(f"Файл не найден: {csv_path}")
+
+    with p.open(encoding="utf-8", newline="") as f:
+        reader = csv.DictReader(f)
+        if reader.fieldnames is None:
+            raise ValueError("CSV без заголовка")
+        rows = list(reader)
+
+    if not rows:
+        raise ValueError("Пустой CSV")
+
+    out = Path(json_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with out.open("w", encoding="utf-8") as f:
+        json.dump(rows, f, ensure_ascii=False, indent=2)
 ```
-!
+## задание 2: csv_xlsx.py
+```python
+"""CSV → XLSX через openpyxl."""
+
+import csv
+from pathlib import Path
+
+from openpyxl import Workbook
+from openpyxl.utils import get_column_letter
+
+
+def csv_to_xlsx(csv_path: str, xlsx_path: str) -> None:
+    """CSV → XLSX.
+
+    Первая строка CSV — заголовок. Лист "Sheet1".
+    Автоширина колонок (минимум 8 символов).
+    """
+    p = Path(csv_path)
+    if not p.exists():
+        raise FileNotFoundError(f"Файл не найден: {csv_path}")
+
+    with p.open(encoding="utf-8", newline="") as f:
+        rows = list(csv.reader(f))
+
+    if not rows:
+        raise ValueError("Пустой CSV")
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Sheet1"
+
+    for row in rows:
+        ws.append(row)
+
+    # автоширина колонок
+    for col_idx, col in enumerate(zip(*rows), start=1):
+        max_len = max((len(str(cell)) for cell in col), default=0)
+        ws.column_dimensions[get_column_letter(col_idx)].width = max(8, max_len + 2)
+
+    out = Path(xlsx_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    wb.save(out)
+```
+## выполнение
+```python
+"""Демонстрация ЛР5: JSON→CSV, CSV→JSON, CSV→XLSX."""
+
+from src.lab05.json_csv import json_to_csv, csv_to_json
+from src.lab05.csv_xlsx import csv_to_xlsx
+
+
+def main():
+    # 1. JSON → CSV
+    json_to_csv("data/lab05/samples/people.json",
+                "data/lab05/out/people_from_json.csv")
+    print("[OK] JSON → CSV: data/lab05/out/people_from_json.csv")
+
+    # 2. CSV → JSON
+    csv_to_json("data/lab05/samples/people.csv",
+                "data/lab05/out/people_from_csv.json")
+    print("[OK] CSV → JSON: data/lab05/out/people_from_csv.json")
+
+    # 3. CSV → XLSX
+    csv_to_xlsx("data/lab05/samples/cities.csv",
+                "data/lab05/out/cities.xlsx")
+    print("[OK] CSV → XLSX: data/lab05/out/cities.xlsx")
+
+
+if __name__ == "__main__":
+    main()
+```
+![](images/lab05/lr_run.png) ![from_csv](images/lab05/from_csv.png) ![from_json](images/lab05/from_json.png) ![cities](images/lab05/cities.png) ![](images/lab05/empty.png)
 
 # Лабораторная работа 6
 ## техническое задание

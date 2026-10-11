@@ -6,16 +6,19 @@ from src.lab05.csv_xlsx import csv_to_xlsx
 
 def main():
     # 1. JSON → CSV
-    json_to_csv("data/lab05/people.json", "data/lab05/people_from_json.csv")
-    print("[OK] JSON → CSV: data/lab05/people_from_json.csv")
+    json_to_csv("data/lab05/samples/people.json",
+                "data/lab05/out/people_from_json.csv")
+    print("[OK] JSON → CSV: data/lab05/out/people_from_json.csv")
 
     # 2. CSV → JSON
-    csv_to_json("data/lab05/people.csv", "data/lab05/people_from_csv.json")
-    print("[OK] CSV → JSON: data/lab05/people_from_csv.json")
+    csv_to_json("data/lab05/samples/people.csv",
+                "data/lab05/out/people_from_csv.json")
+    print("[OK] CSV → JSON: data/lab05/out/people_from_csv.json")
 
     # 3. CSV → XLSX
-    csv_to_xlsx("data/lab05/cities.csv", "data/lab05/cities.xlsx")
-    print("[OK] CSV → XLSX: data/lab05/cities.xlsx")
+    csv_to_xlsx("data/lab05/samples/cities.csv",
+                "data/lab05/out/cities.xlsx")
+    print("[OK] CSV → XLSX: data/lab05/out/cities.xlsx")
 
 
 if __name__ == "__main__":
